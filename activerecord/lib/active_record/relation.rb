@@ -17,7 +17,7 @@ module ActiveRecord
     VALUE_METHODS = MULTI_VALUE_METHODS + SINGLE_VALUE_METHODS + CLAUSE_METHODS
 
     include Enumerable
-    include FinderMethods, Calculations, SpawnMethods, QueryMethods, Batches, Explain, Delegation
+    include FinderMethods, Calculations, SpawnMethods, QueryMethods, Batches, IncludesTracker, Explain, Delegation
 
     attr_reader :table, :klass, :loaded, :predicate_builder
     attr_accessor :skip_preloading_value
@@ -838,7 +838,7 @@ module ActiveRecord
 
     def preload_associations(records) # :nodoc:
       preload = preload_values
-      preload += includes_values unless eager_loading?
+      preload += eager_loading? ? includes_values_non_referenced : includes_values
       scope = strict_loading_value ? StrictLoadingScope : nil
       preload.each do |associations|
         ActiveRecord::Associations::Preloader.new(records: records, associations: associations, scope: scope).call

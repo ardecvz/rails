@@ -111,6 +111,7 @@ module ActiveRecord
       autoload :Calculations
       autoload :Delegation
       autoload :FinderMethods
+      autoload :IncludesTracker
       autoload :PredicateBuilder
       autoload :QueryMethods
       autoload :SpawnMethods

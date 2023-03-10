@@ -407,9 +407,10 @@ module ActiveRecord
         relation
       end
 
-      def apply_join_dependency(eager_loading: group_values.empty?)
+      def apply_join_dependency(eager_loading: group_values.empty?, full_eager_loading: false)
+        selected_includes_values = full_eager_loading ? includes_values : includes_values_referenced
         join_dependency = construct_join_dependency(
-          eager_load_values | includes_values, Arel::Nodes::OuterJoin
+          eager_load_values | selected_includes_values, Arel::Nodes::OuterJoin
         )
         relation = except(:includes, :eager_load, :preload).joins!(join_dependency)
 
