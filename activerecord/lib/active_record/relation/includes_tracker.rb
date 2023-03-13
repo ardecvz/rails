@@ -4,40 +4,24 @@ module ActiveRecord
   # Determine includes which are used / not used in refererences and joins.
   module IncludesTracker # :nodoc:
     def includes_values_referenced
-      select_includes_values_with_references(:any?, :present?)
+      select_includes_values_with_references(:present?)
     end
 
     def includes_values_non_referenced
-      select_includes_values_with_references(:all?, :blank?)
+      select_includes_values_with_references(:blank?)
     end
 
     private
-      def select_includes_values_with_references(matcher, intersect_matcher)
+      def select_includes_values_with_references(intersect_matcher)
         all_references = (references_values + joins_values + left_outer_joins_values).map(&:to_s)
 
-        normalized_includes_values.select do |includes_value|
-          includes_tree = ActiveRecord::Associations::JoinDependency.make_tree(includes_value)
+        includes_tree = ActiveRecord::Associations::JoinDependency.make_tree(includes_values)
 
-          includes_values_reflections(includes_tree).public_send(matcher) do |reflection|
-            next true unless reliable_reflection_match?(reflection)
+        traverse_tree_with_model(includes_tree, self) do |reflection|
+          next true unless reliable_reflection_match?(reflection)
 
-            (possible_includes_tables(reflection) & all_references).public_send(intersect_matcher)
-          end
+          (possible_includes_tables(reflection) & all_references).public_send(intersect_matcher)
         end
-      end
-
-      def includes_values_reflections(includes_tree)
-        includes_reflections = []
-
-        traverse_tree_with_model(includes_tree, self) do |association, model|
-          reflection = model.reflect_on_association(association)
-
-          includes_reflections << reflection
-
-          reliable_reflection_match?(reflection) ? reflection.klass : model
-        end
-
-        includes_reflections
       end
 
       def possible_includes_tables(reflection)
@@ -71,17 +55,20 @@ module ActiveRecord
         [reflection.join_table, reflection.alias_candidate(:join)].sort.join("_")
       end
 
-      def normalized_includes_values
-        includes_values.map do |element|
-          element.is_a?(Hash) ? element.map { |key, value| { key => value } } : element
-        end.flatten
-      end
+      def traverse_tree_with_model(hash, model, &block)
+        return hash if model.nil?
 
-      def traverse_tree_with_model(object, model, &block)
-        object.each do |key, value|
-          next_model = yield(key, model)
-          traverse_tree_with_model(value, next_model, &block) if next_model
+        result = []
+        hash.each do |association, nested_hash|
+          current = model.reflect_on_association(association)
+
+          next_model = reliable_reflection_match?(current) ? current.klass : nil
+          current_result = traverse_tree_with_model(nested_hash, next_model, &block)
+          next (result << { association => current_result }) if current_result.any?
+
+          result << association if block.call(current)
         end
+        result
       end
   end
 end

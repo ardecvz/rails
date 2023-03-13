@@ -539,7 +539,7 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
   def test_nested_has_many_through_with_conditions_on_through_associations_preload
     assert_empty Author.where("tags.id" => 100).joins(:misc_post_first_blue_tags)
 
-    author = assert_queries(2) { Author.includes(:misc_post_first_blue_tags).third }
+    author = assert_queries(3) { Author.includes(:misc_post_first_blue_tags).third }
     blue = tags(:blue)
 
     assert_no_queries do

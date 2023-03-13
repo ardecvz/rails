@@ -62,6 +62,13 @@ class AssociationsEagerLoadMixingPreloadTest < ActiveRecord::TestCase
     assert_no_queries { authors.flat_map(&:ratings).map(&:value) }
   end
 
+  def test_mixing_eager_load_and_preload_for_includes_with_advanced_has_many_through_association
+    authors = Author.includes(posts: :categorizations).where(posts: { tags_count: 1 })
+    assert_left_joins(1) { authors.to_sql }
+    assert_queries(2) { authors.to_a }
+    assert_no_queries { authors.flat_map(&:posts).flat_map(&:categorizations).map(&:special) }
+  end
+
   def test_mixing_eager_load_and_preload_for_referenced_only_indirect_through_association
     persons = Person.includes(:posts, :references).references(:readers)
                     .where("readers.id = 1 or 1=1")
@@ -158,14 +165,14 @@ class AssociationsEagerLoadMixingPreloadTest < ActiveRecord::TestCase
 
   def test_mixing_eager_load_and_preload_with_forced_full_eager_loading_calculation
     companies = Company.includes(:contracts)
-    assert_sql(/LEFT OUTER JOIN/) { companies.sum(:developer_id) }
-    assert_queries(1) { companies.sum(:developer_id) }
+    assert_sql(/LEFT OUTER JOIN/) { companies.sum(:metadata) }
+    assert_queries(1) { companies.sum(:metadata) }
   end
 
   def test_mixing_eager_load_and_preload_with_forced_full_eager_loading_pluck
     companies = Company.includes(:contracts)
-    assert_sql(/LEFT OUTER JOIN/) { companies.pluck(:developer_id) }
-    assert_queries(1) { companies.pluck(:developer_id) }
+    assert_sql(/LEFT OUTER JOIN/) { companies.pluck(:metadata) }
+    assert_queries(1) { companies.pluck(:metadata) }
   end
 
   def test_mixing_eager_load_and_preload_with_forced_full_eager_loading_ids
@@ -212,7 +219,7 @@ class AssociationsEagerLoadMixingPreloadTest < ActiveRecord::TestCase
   def test_mixing_eager_load_and_preload_join_table
     developers = Developer.all
       .includes(:projects)
-      .where("developers_projects.access_level": 1)
+      .where("developers_projects.joined_on": nil)
     assert_left_joins(2) { developers.to_sql }
     assert_queries(1) { developers.to_a }
     assert_no_queries { developers.flat_map(&:projects).map(&:name) }
@@ -221,8 +228,8 @@ class AssociationsEagerLoadMixingPreloadTest < ActiveRecord::TestCase
   def test_mixing_eager_load_and_preload_join_table_with_postfix_alias
     developers = Developer.all
       .includes(projects: :developers)
-      .where("developers_projects_projects_join.access_level.joined_on": nil)
-    assert_left_joins(4) { developers.to_sql }
+      .where("developers_projects_projects_join.joined_on": nil)
+    assert_left_joins(2) { developers.to_sql }
     assert_queries(1) { developers.to_a }
     assert_no_queries { developers.flat_map(&:projects).map(&:name) }
     assert_no_queries { developers.flat_map(&:projects).flat_map(&:developers).map(&:first_name) }
