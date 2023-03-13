@@ -3,6 +3,8 @@
 module ActiveRecord
   # Determine includes which are used / not used in refererences and joins.
   module IncludesTracker # :nodoc:
+    TABLE_WITH_POSTFIX_ALIAS = "_join"
+
     def includes_values_referenced
       select_includes_values_with_references(:present?)
     end
@@ -15,8 +17,9 @@ module ActiveRecord
       def select_includes_values_with_references(intersect_matcher)
         all_references = (references_values + joins_values + left_outer_joins_values).map(&:to_s)
 
-        includes_tree = ActiveRecord::Associations::JoinDependency.make_tree(includes_values)
+        return includes_values if references_table_with_postfix_alias?(all_references)
 
+        includes_tree = ActiveRecord::Associations::JoinDependency.make_tree(includes_values)
         traverse_tree_with_model(includes_tree, self) do |reflection|
           next true unless reliable_reflection_match?(reflection)
 
@@ -24,6 +27,12 @@ module ActiveRecord
         end
       end
 
+      # Possible includes tables contain:
+      # - Current table name;
+      # - All `through` table names;
+      # - Special plural table name;
+      # - Association name (`references` may save directly);
+      # - Join table for HABTM.
       def possible_includes_tables(reflection)
         all_possible_includes_tables =
           reflection.collect_join_chain.map(&:table_name) <<
@@ -31,12 +40,14 @@ module ActiveRecord
           reflection.name.to_s
 
         if inferable_reflection_table_name?(reflection)
-          all_possible_includes_tables <<
-            reflection.join_table <<
-            join_table_with_postfix_alias(reflection)
+          all_possible_includes_tables << reflection.join_table
         end
 
         all_possible_includes_tables
+      end
+
+      def references_table_with_postfix_alias?(all_references)
+        all_references.any? { _1.end_with?(TABLE_WITH_POSTFIX_ALIAS) }
       end
 
       def reliable_reflection_match?(reflection)
@@ -49,10 +60,6 @@ module ActiveRecord
 
       def inferable_reflection_table_name?(reflection)
         !reflection.through_reflection?
-      end
-
-      def join_table_with_postfix_alias(reflection)
-        [reflection.join_table, reflection.alias_candidate(:join)].sort.join("_")
       end
 
       def traverse_tree_with_model(hash, model, &block)

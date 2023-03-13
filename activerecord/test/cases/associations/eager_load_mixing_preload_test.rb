@@ -229,10 +229,10 @@ class AssociationsEagerLoadMixingPreloadTest < ActiveRecord::TestCase
     developers = Developer.all
       .includes(projects: :developers)
       .where("developers_projects_projects_join.joined_on": nil)
-    assert_left_joins(2) { developers.to_sql }
-    assert_queries(1) { developers.to_a }
+    assert_left_joins(4) { developers.to_sql }
+    assert_queries(5) { developers.to_a }
     assert_no_queries { developers.flat_map(&:projects).map(&:name) }
-    assert_no_queries { developers.flat_map(&:projects).flat_map(&:developers).map(&:first_name) }
+    assert_no_queries { developers.flat_map(&:projects).flat_map(&:developers).map(&:name) }
   end
 
   def test_mixing_eager_load_and_preload_for_cache_key_with_non_referenced_includes
