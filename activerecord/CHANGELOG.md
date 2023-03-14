@@ -1,3 +1,38 @@
+*   Slimmer `#includes` behaviour.
+
+    The goal of the change is to make `#includes` slimmer - only join the table required to satisfy the referenced tables and preload all other associations independently.
+
+    The following two statements would demonstrate the difference BEFORE the change:
+
+    ```sh
+    > Author.includes(:post, books: :essay).to_a
+
+      Author Load (0.2ms)  SELECT "authors".* FROM "authors"
+      Post Load (0.3ms)  SELECT "posts".* FROM "posts" WHERE "posts"."author_id" IN (?, ?, ?)  [["author_id", 1], ["author_id", 2], ["author_id", 3]]
+      Book Load (0.3ms)  SELECT "books".* FROM "books" WHERE "books"."author_id" IN (?, ?, ?)  [["author_id", 1], ["author_id", 2], ["author_id", 3]]
+      Essay Load (0.1ms)  SELECT "essays".* FROM "essays" WHERE "essays"."book_id" IN (?, ?, ?, ?)  [["book_id", 1], ["book_id", 3], ["book_id", 2], ["book_id", 4]]
+
+    > Author.includes(:post, books: :essay).where(books: { language: 'EN' }).to_a
+
+      SQL (0.3ms)  SELECT "authors"."id" AS t0_r0, "authors"."name" AS t0_r1, "authors"."author_address_id" AS t0_r2, "authors"."author_address_extra_id" AS t0_r3, "authors"."organization_id" AS t0_r4, "authors"."owned_essay_id" AS t0_r5, "posts"."id" AS t1_r0, "posts"."author_id" AS t1_r1, "posts"."title" AS t1_r2, "posts"."body" AS t1_r3, "posts"."type" AS t1_r4, "posts"."legacy_comments_count" AS t1_r5, "posts"."taggings_with_delete_all_count" AS t1_r6, "posts"."taggings_with_destroy_count" AS t1_r7, "posts"."tags_count" AS t1_r8, "posts"."indestructible_tags_count" AS t1_r9, "posts"."tags_with_destroy_count" AS t1_r10, "posts"."tags_with_nullify_count" AS t1_r11, "books"."id" AS t2_r0, "books"."author_id" AS t2_r1, "books"."format" AS t2_r2, "books"."format_record_id" AS t2_r3, "books"."format_record_type" AS t2_r4, "books"."name" AS t2_r5, "books"."status" AS t2_r6, "books"."last_read" AS t2_r7, "books"."nullable_status" AS t2_r8, "books"."language" AS t2_r9, "books"."author_visibility" AS t2_r10, "books"."illustrator_visibility" AS t2_r11, "books"."font_size" AS t2_r12, "books"."difficulty" AS t2_r13, "books"."cover" AS t2_r14, "books"."isbn" AS t2_r15, "books"."external_id" AS t2_r16, "books"."original_name" AS t2_r17, "books"."published_on" AS t2_r18, "books"."boolean_status" AS t2_r19, "books"."tags_count" AS t2_r20, "books"."created_at" AS t2_r21, "books"."updated_at" AS t2_r22, "books"."updated_on" AS t2_r23, "essays"."id" AS t3_r0, "essays"."type" AS t3_r1, "essays"."name" AS t3_r2, "essays"."writer_id" AS t3_r3, "essays"."writer_type" AS t3_r4, "essays"."category_id" AS t3_r5, "essays"."author_id" AS t3_r6, "essays"."book_id" AS t3_r7 FROM "authors" LEFT OUTER JOIN "posts" ON "posts"."author_id" = "authors"."id" LEFT OUTER JOIN "books" ON "books"."author_id" = "authors"."id" LEFT OUTER JOIN "essays" ON "essays"."book_id" = "books"."id" WHERE "books"."language" IS NULL
+
+    ```
+
+    And this is AFTER the change:
+
+    ```sh
+    > Author.includes(:post, books: :essay).where(books: { language: 'EN' }).to_a
+
+      SQL (0.2ms)  SELECT "authors"."id" AS t0_r0, "authors"."name" AS t0_r1, "authors"."author_address_id" AS t0_r2, "authors"."author_address_extra_id" AS t0_r3, "authors"."organization_id" AS t0_r4, "authors"."owned_essay_id" AS t0_r5, "books"."id" AS t1_r0, "books"."author_id" AS t1_r1, "books"."format" AS t1_r2, "books"."format_record_id" AS t1_r3, "books"."format_record_type" AS t1_r4, "books"."name" AS t1_r5, "books"."status" AS t1_r6, "books"."last_read" AS t1_r7, "books"."nullable_status" AS t1_r8, "books"."language" AS t1_r9, "books"."author_visibility" AS t1_r10, "books"."illustrator_visibility" AS t1_r11, "books"."font_size" AS t1_r12, "books"."difficulty" AS t1_r13, "books"."cover" AS t1_r14, "books"."isbn" AS t1_r15, "books"."external_id" AS t1_r16, "books"."original_name" AS t1_r17, "books"."published_on" AS t1_r18, "books"."boolean_status" AS t1_r19, "books"."tags_count" AS t1_r20, "books"."created_at" AS t1_r21, "books"."updated_at" AS t1_r22, "books"."updated_on" AS t1_r23 FROM "authors" LEFT OUTER JOIN "books" ON "books"."author_id" = "authors"."id" WHERE "books"."language" IS NULL
+      Post Load (0.2ms)  SELECT "posts".* FROM "posts" WHERE "posts"."author_id" IN (?, ?, ?)  [["author_id", 1], ["author_id", 2], ["author_id", 3]]
+      Essay Load (0.1ms)  SELECT "essays".* FROM "essays" WHERE "essays"."book_id" = ?  [["book_id", 1]]
+
+    ```
+
+    It avoids joining everything which could be performance-heavy.
+
+    *Artur Petrov, Svyatoslav Kryukov, Vladimir Dementyev*
+
 *   Remove deprecated `Tasks::DatabaseTasks.schema_file_type`.
 
     *Rafael Mendonça França*

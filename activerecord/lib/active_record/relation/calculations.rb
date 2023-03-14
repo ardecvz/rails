@@ -189,7 +189,7 @@ module ActiveRecord
     #      end
     def calculate(operation, column_name)
       if has_include?(column_name)
-        relation = apply_join_dependency
+        relation = apply_join_dependency(full_eager_loading: true)
 
         if operation.to_s.downcase == "count"
           unless distinct_value || distinct_select?(column_name || select_for_count)
@@ -251,7 +251,7 @@ module ActiveRecord
       end
 
       if has_include?(column_names.first)
-        relation = apply_join_dependency
+        relation = apply_join_dependency(full_eager_loading: true)
         relation.pluck(*column_names)
       else
         klass.disallow_raw_sql!(column_names)
@@ -315,7 +315,7 @@ module ActiveRecord
       end
 
       if has_include?(primary_key)
-        relation = apply_join_dependency.distinct
+        relation = apply_join_dependency(full_eager_loading: true).distinct
         return relation.ids
       end
 
