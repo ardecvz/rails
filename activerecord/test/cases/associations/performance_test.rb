@@ -84,7 +84,7 @@ class AssociationsPerformanceTest < ActiveRecord::TestCase
       authors.to_sql
     end
 
-    assert_slower_by_at_most 0.8, baseline: baseline, duration: DURATION do
+    assert_slower_by_at_most 0.7, baseline: baseline, duration: DURATION do
       ENV["SLIM_PATCH_CODE_ONLY"] = nil
       ENV["SLIM_PATCH"] = "true"
       authors = Author.includes(
