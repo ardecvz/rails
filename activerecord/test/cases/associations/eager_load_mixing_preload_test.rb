@@ -165,8 +165,8 @@ class AssociationsEagerLoadMixingPreloadTest < ActiveRecord::TestCase
 
   def test_mixing_eager_load_and_preload_with_forced_full_eager_loading_calculation
     companies = Company.includes(:contracts)
-    assert_sql(/LEFT OUTER JOIN/) { companies.sum(:metadata) }
-    assert_queries(1) { companies.sum(:metadata) }
+    assert_sql(/LEFT OUTER JOIN/) { companies.sum(:count) }
+    assert_queries(1) { companies.sum(:count) }
   end
 
   def test_mixing_eager_load_and_preload_with_forced_full_eager_loading_pluck
