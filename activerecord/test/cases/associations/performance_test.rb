@@ -54,7 +54,7 @@ class AssociationsPerformanceTest < ActiveRecord::TestCase
     end
   end
 
-  def test_performance
+  def test_performance_objects_allocating
     baseline = lambda do
       ENV["SLIM_PATCH_CODE_ONLY"] = nil
       ENV["SLIM_PATCH"] = nil
@@ -71,6 +71,26 @@ class AssociationsPerformanceTest < ActiveRecord::TestCase
         :books, { posts: :special_comments }, { categorizations: :category }
       ).order("comments.body").where("posts.id = 4")
       authors.to_a
+    end
+  end
+
+  def test_performance_sql_only
+    baseline = lambda do
+      ENV["SLIM_PATCH_CODE_ONLY"] = nil
+      ENV["SLIM_PATCH"] = nil
+      authors = Author.includes(
+        :books, { posts: :special_comments }, { categorizations: :category }
+      ).order("comments.body").where("posts.id = 4")
+      authors.to_sql
+    end
+
+    assert_slower_by_at_most 0.8, baseline: baseline, duration: DURATION do
+      ENV["SLIM_PATCH_CODE_ONLY"] = nil
+      ENV["SLIM_PATCH"] = "true"
+      authors = Author.includes(
+        :books, { posts: :special_comments }, { categorizations: :category }
+      ).order("comments.body").where("posts.id = 4")
+      authors.to_sql
     end
   end
 end
