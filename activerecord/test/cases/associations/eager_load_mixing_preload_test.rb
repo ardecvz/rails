@@ -207,15 +207,6 @@ class AssociationsEagerLoadMixingPreloadTest < ActiveRecord::TestCase
     assert_no_queries { members.map(&:sponsor_club).map(&:name) }
   end
 
-  def test_mixing_eager_load_and_preload_table_alias
-    firms = Firm.all
-      .includes(:clients_using_primary_key)
-      .order("clients_using_primary_keys_companies.name")
-    assert_left_joins(1) { firms.to_sql }
-    assert_queries(1) { firms.to_a }
-    assert_no_queries { firms.flat_map(&:clients_using_primary_key).map(&:name) }
-  end
-
   def test_mixing_eager_load_and_preload_join_table
     developers = Developer.all
       .includes(:projects)
@@ -225,12 +216,31 @@ class AssociationsEagerLoadMixingPreloadTest < ActiveRecord::TestCase
     assert_no_queries { developers.flat_map(&:projects).map(&:name) }
   end
 
-  def test_mixing_eager_load_and_preload_join_table_with_postfix_alias
+  def test_mixing_eager_load_and_preload_table_alias
+    firms = Firm.all
+      .includes(:clients_using_primary_key)
+      .order("clients_using_primary_keys_companies.name")
+    assert_left_joins(1) { firms.to_sql }
+    assert_queries(1) { firms.to_a }
+    assert_no_queries { firms.flat_map(&:clients_using_primary_key).map(&:name) }
+  end
+
+  def test_mixing_eager_load_and_preload_join_table_alias
     developers = Developer.all
       .includes(projects: :developers)
       .where("developers_projects_projects_join.joined_on": nil)
     assert_left_joins(4) { developers.to_sql }
-    assert_queries(5) { developers.to_a }
+    assert_queries(1) { developers.to_a }
+    assert_no_queries { developers.flat_map(&:projects).map(&:name) }
+    assert_no_queries { developers.flat_map(&:projects).flat_map(&:developers).map(&:name) }
+  end
+
+  def test_mixing_eager_load_and_preload_numbered_table_aliases
+    developers = Developer.all
+      .includes(projects: { developers: :projects })
+      .where("developers_projects_2.salary": nil)
+    assert_left_joins(5) { developers.to_sql }
+    assert_queries(2) { developers.to_a }
     assert_no_queries { developers.flat_map(&:projects).map(&:name) }
     assert_no_queries { developers.flat_map(&:projects).flat_map(&:developers).map(&:name) }
   end
