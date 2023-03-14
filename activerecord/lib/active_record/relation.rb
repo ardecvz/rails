@@ -838,7 +838,14 @@ module ActiveRecord
 
     def preload_associations(records) # :nodoc:
       preload = preload_values
-      preload += eager_loading? ? includes_values_non_referenced : includes_values
+      if ENV["SLIM_PATCH"].present?
+        preload += eager_loading? ? includes_values_non_referenced : includes_values
+      elsif ENV["SLIM_PATCH_CODE_ONLY"].present?
+        includes_values_non_referenced
+        preload += includes_values unless eager_loading?
+      else
+        preload += includes_values unless eager_loading?
+      end
       scope = strict_loading_value ? StrictLoadingScope : nil
       preload.each do |associations|
         ActiveRecord::Associations::Preloader.new(records: records, associations: associations, scope: scope).call
