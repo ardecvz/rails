@@ -4,11 +4,11 @@ module ActiveRecord
   # Determine includes which are used / not used in refererences and joins.
   module IncludesTracker # :nodoc:
     def includes_values_referenced
-      select_includes_values_with_references(:present?)
+      select_includes_values_with_references(:any?)
     end
 
     def includes_values_non_referenced
-      select_includes_values_with_references(:blank?)
+      select_includes_values_with_references(:none?)
     end
 
     private
