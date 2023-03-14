@@ -408,10 +408,21 @@ module ActiveRecord
       end
 
       def apply_join_dependency(eager_loading: group_values.empty?, full_eager_loading: false)
-        selected_includes_values = full_eager_loading ? includes_values : includes_values_referenced
-        join_dependency = construct_join_dependency(
-          eager_load_values | selected_includes_values, Arel::Nodes::OuterJoin
-        )
+        if ENV["SLIM_PATCH"].present?
+          selected_includes_values = full_eager_loading ? includes_values : includes_values_referenced
+          join_dependency = construct_join_dependency(
+            eager_load_values | selected_includes_values, Arel::Nodes::OuterJoin
+          )
+        elsif ENV["SLIM_PATCH_CODE_ONLY"].present?
+          selected_includes_values = full_eager_loading ? includes_values : includes_values_referenced
+          join_dependency = construct_join_dependency(
+            eager_load_values | includes_values, Arel::Nodes::OuterJoin
+          )
+        else
+          join_dependency = construct_join_dependency(
+            eager_load_values | includes_values, Arel::Nodes::OuterJoin
+          )
+        end
         relation = except(:includes, :eager_load, :preload).joins!(join_dependency)
 
         if eager_loading && has_limit_or_offset? && !(
